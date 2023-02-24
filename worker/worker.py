@@ -10,7 +10,7 @@ from dill import dump, load
 class Pickler:
 
   HOME_PATH = str(Path.home())
-  DEFAULT_PATH = HOME_PATH + "\\Appdata\\Roaming\\PicklePal"
+  DEFAULT_PATH = os.path.join(HOME_PATH, "Appdata", "Roaming", "PicklePal")
   
   os.chdir(HOME_PATH)
   
@@ -55,46 +55,84 @@ class Pickler:
  
     for folder in ["WAITING", "RUNNING", "DONE", "TASKS"]:
       try:
-        os.makedirs(os.path.join(f"{self.temp_folder}\\{folder}"))
+        os.makedirs(os.path.join(self.temp_folder, folder))
       except FileExistsError:
         self.LOGGER.warning(f"{folder} is already in temp dir : {self.temp_folder}")
         
     self.LOGGER.info(f"Temp files are created SUCCESSFULLY in {self.temp_folder}.")
     
-    csv_dir = os.path.join(self.temp_folder, "TASKS")
+    self._csv_dir = os.path.join(self.temp_folder, "TASKS")
     
-    self.LOGGER.info(f"CSV file is creating in {csv_dir}")
+    self.LOGGER.info(f"CSV file is creating in {self._csv_dir}")
     
-    if not os.path.isfile(os.path.join(csv_dir, "tasks.csv")):
-      with open(os.path.join(csv_dir, "tasks.csv"), "a") as f:
+    if not os.path.isfile(os.path.join(self._csv_dir, "tasks.csv")):
+      with open(os.path.join(self._csv_dir, "tasks.csv"), "a") as f:
         writer = csv.writer(f)
       
-        writer.writerow(["Function", "ID", "STATUS"])
+        writer.writerow(["TASK", "ID", "STATUS", "TIME"])
     
-    self.LOGGER.info(f"CSV file is created SUCCESSFULLY.. in {csv_dir}.")
+    self.LOGGER.info(f"CSV file is created SUCCESSFULLY.. in {self._csv_dir}.")
     
-  def register(self, fn:Callable, *, fname=None):
+  def __loader(self):
+    loads = {}
+    for task in self.__tasks:
+      t = float(datetime.datetime.now().timestamp())
+      print("t", t)
+      if t >= float(task["TIME"]):
+        id = task["ID"]
+        name = task["TASK"]
+        
+        #loading
+        with open (os.path.join(self.temp_folder, "WAITING", id+".pkl"), "rb") as f:
+          k = load(f)
+        
+        loads[name] = k
+    
+    return loads
+    
+  def register(self, fn:Callable, *, tname=None):
     """This function registering function to waiting folder.
     function should 'pickleable' type object."""
-    
-    if not fname:
-      fname = fn.__name__
+   
+    #if function name is not specified in registering.
+    if not tname:
+      tname = fn.__name__
       
-    #there is 2^122 chance to collision ids but 
-    #programming doesnt like coincidence.
+    #there is 2^122 chance to collision
     id = str(uuid4())
       
     with open(os.path.join(self.temp_folder, "WAITING", f"{id}.pkl"), "wb") as pkl, \
          open(os.path.join(self.temp_folder, "TASKS", f"tasks.csv"), "a", newline="") as cv:
           
-        writer = csv.writer(cv, skipinitialspace=None)
+        writer = csv.writer(cv)
           
         #save pickled data into temp folder.
         self.LOGGER.info(f"{fn.__name__} is dumping... in {os.path.join(self.temp_folder, 'WAITING')}.")
         dump(obj=fn, file=pkl)
+        
         self.LOGGER.info(f"{fn.__name__} is dumped SUCCESSFULLY... in {os.path.join(self.temp_folder, 'WAITING')}.")
         
         #save csv file into temp folder.
         self.LOGGER.info(f"{fn.__name__} is dumping... in {os.path.join(self.temp_folder, 'WAITING')}.")
-        writer.writerow([fname, id, "WAITING"])
+        
+        #time now
+        time_now = datetime.datetime.now().timestamp()
+        
+        #writing datas to csv
+        writer.writerow([tname, id, "WAITING", time_now])
+        
         self.LOGGER.info(f"{fn.__name__} is dumped SUCCESSFULLY... in {os.path.join(self.temp_folder, 'WAITING')}.")
+  
+  def listener(self, task_path=None):
+    """This function executes tasks"""
+    
+    if not task_path:
+      task_path = self._csv_dir
+    
+    path = os.path.join(task_path, "tasks.csv")
+    
+    with open(path, newline="") as f:
+      reader = csv.DictReader(f)
+      
+      self.__tasks = [row for row in reader]
+    
