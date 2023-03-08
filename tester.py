@@ -1,15 +1,16 @@
 from worker import worker
 
 register = worker.Pickler().register
-
+#
 listenr = worker.Pickler().listener()
-def func1(a, b, c, d=1):
-    print(a, b, c, d)
-
-def func2(a=1, b=1, c=1, d=1):
-    print(a, b, c, d)
-
-register(func1, args=(1, 2, 3), kwargs={"d": 10})
+# def func1(a, b, c, d=1):
+#     print(a, b, c, d)
+#
+#
+# def func2(a=1, b=1, c=1, d=1):
+#     print(a, b, c, d)
+#
+# register(func1, args=(1, 2, 3), kwargs={"d": 10})
 
 
 # import datetime

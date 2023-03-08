@@ -2,6 +2,8 @@ import csv
 import datetime
 import logging
 import os
+import pandas as pd
+import shutil
 from pathlib import Path
 from typing import Callable
 from uuid import uuid4
@@ -90,10 +92,37 @@ class Pickler:
 
         return loads
 
+    def __get_tasks(self, path):
+
+        with open(path, newline="") as f:
+            reader = csv.DictReader(f)
+
+            return [row for row in reader]
+
     def __run(self, id):
         with open(os.path.join(self.temp_folder, "WAITING", id + ".pkl"), "rb") as f:
             f = load(f)
             f()
+
+    def __remove_task(self, id, path):
+
+        column_to_remove = 'ID'  # Example column name
+        id_value = id  # Example ID value to filter on
+
+        # Read the CSV file into a pandas DataFrame
+        df = pd.read_csv(path)
+
+        # Drop the rows where the ID value is equal to 1
+        updated_df = df.drop(df[df['ID'] == id_value].index)
+
+        # Write the updated DataFrame back to the CSV file
+        updated_df.to_csv(path, index=False)
+
+        src = os.path.join(self.temp_folder, "WAITING", id+".pkl")
+        target = os.path.join(self.temp_folder, "DONE")
+
+        #changed done work from 'RUNNNING' folde to 'DONE' folder
+        shutil.move(src, target)
 
     def register(self, fn: Callable, *, tname=None, args=None, kwargs=None, time=None):
         """This function registering function to waiting folder.
@@ -147,25 +176,25 @@ class Pickler:
 
         path = os.path.join(task_path, "tasks.csv")
 
-        self.LOGGER.info(f"Reading tasks from {path} to execute")
-        with open(path, newline="") as f:
-            reader = csv.DictReader(f)
 
-            self.__tasks = [row for row in reader]
-        self.LOGGER.info("Tasks are read SUCCESSFULLY")
 
         while True:
-            if not self.__tasks:
+            tasks = self.__get_tasks(path)
+
+            if not tasks:
                 print("All Tasks Executed SUCCESSFULLY!!!")
                 exit()
 
-            for task in self.__tasks.copy():
+            for task in tasks.copy():
+                id = task["ID"]
+
                 if not task["TIME"]:
-                    self.__run(task["ID"])
-                    self.__tasks.remove(task)
+                    self.__run(id)
+                    self.__remove_task(id, path)
                 elif float(task["TIME"]) <= datetime.datetime.now().timestamp():
-                    self.__run(task["ID"])
-                    self.__tasks.remove(task)
+
+                    self.__run(id)
+                    self.__remove_task(id, path)
 
 
 
