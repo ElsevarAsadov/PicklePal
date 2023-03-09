@@ -3,15 +3,25 @@ from worker import worker
 register = worker.Pickler().register
 #
 listenr = worker.Pickler().listener()
-# def func1(a, b, c, d=1):
-#     print(a, b, c, d)
+
+
+def func1(a, b, c, d=1):
+    print(a, b, c, d)
+    from time import sleep
+    sleep(2)
+
+
 #
 #
 # def func2(a=1, b=1, c=1, d=1):
 #     print(a, b, c, d)
 #
-# register(func1, args=(1, 2, 3), kwargs={"d": 10})
 
+register(func1, args=(1, 2, 3), kwargs={"d": 10})
+register(func1, args=(1, 2, 3), kwargs={"d": 20})
+register(func1, args=(1, 2, 3), kwargs={"d": 30})
+register(func1, args=(1, 2, 3), kwargs={"d": 40})
+register(func1, args=(1, 2, 3), kwargs={"d": 50})
 
 # import datetime
 #
